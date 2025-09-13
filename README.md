@@ -1,66 +1,76 @@
-## Foundry
+# Nagare Protocol Smart Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+## Overview
 
-Foundry consists of:
+Nagare Protocol is a decentralized escrow and payment solution that revolutionizes how freelancers and gig workers receive payments while generating yield on idle funds.
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Problems We Solve
 
-## Documentation
+### Delayed Payments
 
-https://book.getfoundry.sh/
+Freelancers and gig workers wait days or weeks to receive payment after completing work, creating cash flow issues.
 
-## Usage
+### Idle Escrow Funds
 
-### Build
+Billions in escrow funds sit idle in platform accounts, generating no value for either platforms or workers.
 
-```shell
-$ forge build
-```
+### Lack of Transparency
 
-### Test
+Workers have no visibility into payment status or proof of funds, creating trust issues between platforms and workers.
 
-```shell
-$ forge test
-```
+## Our Solution
 
-### Format
+Nagare Protocol enables clients to send payments to workers through a transparent, yield-generating escrow system:
 
-```shell
-$ forge fmt
-```
+- **Yield Generation**: Funds are deposited into Morpho Protocol to earn yield while in escrow
+- **Proof-of-Work Verification**: Workers submit proof of work to claim payments through our verifier system
+- **Transparency**: All agreements and payment statuses are on-chain and verifiable
+- **Flexibility**: Compatible with any ERC-4626 vault and custom verifier implementations
 
-### Gas Snapshots
+## Architecture
 
-```shell
-$ forge snapshot
-```
+Nagare Protocol consists of 3 core smart contract components:
 
-### Anvil
+### 1. Agreement
 
-```shell
-$ anvil
-```
+The main contract that manages payment agreements between clients and contractors. It handles:
 
-### Deploy
+- Starting new agreements with specified terms
+- Managing fund transfers and escrow
+- Coordinating with verifiers for payment releases
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+### 2. Vault
 
-### Cast
+ERC-4626 compatible vault system for yield generation:
 
-```shell
-$ cast <subcommand>
-```
+- USDC-based vaults
+- Integrated with Morpho Protocol for yield optimization
+- Custom vault implementations supported
 
-### Help
+### 3. Verifier
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+Modular verification system for proof-of-work validation:
+
+- Custom verifier implementations for different work types
+- Checkpoint and termination verification
+- Pluggable architecture for various verification methods
+
+## Workflow
+
+1. **Agreement Creation**: Client calls `startAgreement()` with contract terms, transferring funds to the vault
+2. **Work Progress**: At any time, either party can execute:
+   - `checkpoint()` - Verify work progress and release partial payments
+   - `terminate()` - Complete or cancel the agreement
+3. **Verification**: The verifier component validates auxiliary data and returns approve/reject
+4. **Payment Release**: On approval, vault tokens are transferred to the contractor
+5. **Fund Recovery**: On termination, remaining funds return to the client
+
+## Technical Interfaces
+
+The protocol defines clear interfaces for extensibility:
+
+- **INagareAgreement**: Core agreement management functions
+- **INagareVerifier**: Pluggable verification logic
+- **ERC-4626**: Standard vault compatibility for yield generation
+
+For detailed interface specifications, see the `/src/interface/` directory.
