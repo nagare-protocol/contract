@@ -10,16 +10,11 @@ struct Agreement {
     uint256 totalSize;
     uint256[] checkpointSize;
     address receiver;
+    address provider;
 }
 
 interface INagareAgreement {
     function startAgreement(Agreement memory agreement) external;
-
-    function vault() external view returns (IERC4626);
-
-    function getAgreement(
-        uint256 agreementId
-    ) external view returns (Agreement memory);
 
     function checkpoint(
         uint256 agreementId,
@@ -31,4 +26,10 @@ interface INagareAgreement {
         uint256 agreementId,
         bytes memory auxiliaryData
     ) external;
+
+    function vault() external view returns (IERC4626);
+
+    function agreements(
+        uint256 agreementId
+    ) external view returns (Agreement memory);
 }
