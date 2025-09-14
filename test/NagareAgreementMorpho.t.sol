@@ -4,10 +4,9 @@ pragma solidity 0.8.29;
 import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC4626} from "@openzeppelin/contracts/token/ERC20/extensions/ERC4626.sol";
-import {IERC4626} from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {NagareAgreement} from "../src/NagareAgreementMorpho.sol";
-import {INagareAgreement, Agreement} from "../src/interface/INagareAgreement.sol";
+import {Agreement} from "../src/interface/INagareAgreement.sol";
 import {INagareVerifier} from "../src/interface/INagareVerifier.sol";
 
 contract MockERC20 is ERC20 {
@@ -51,15 +50,15 @@ contract MockVerifier is INagareVerifier {
 
     function verifyCheckpoint(
         uint256 agreementId,
-        uint256 checkpointId,
-        bytes memory auxiliaryData
+        uint256 /*checkpointId*/,
+        bytes memory /*auxiliaryData*/
     ) external view returns (bool) {
         return shouldApproveCheckpoint[agreementId];
     }
 
     function verifyTermination(
         uint256 agreementId,
-        bytes memory auxiliaryData
+        bytes memory /*auxiliaryData*/
     ) external view returns (bool) {
         return shouldApproveTermination[agreementId];
     }
@@ -75,7 +74,7 @@ contract MockVerifier is INagareVerifier {
 
 contract NagareAgreementMorphoTest is Test {
     NagareAgreement public nagareAgreement;
-    MockERC20 public mockUSDC;
+    MockERC20 public mockUsdc;
     MockERC4626 public mockVault;
     MockVerifier public mockVerifier;
 
@@ -94,24 +93,24 @@ contract NagareAgreementMorphoTest is Test {
 
     function setUp() public {
         // Deploy mock contracts
-        mockUSDC = new MockERC20();
-        mockVault = new MockERC4626(IERC20(address(mockUSDC)));
+        mockUsdc = new MockERC20();
+        mockVault = new MockERC4626(IERC20(address(mockUsdc)));
         mockVerifier = new MockVerifier();
         
         // Deploy NagareAgreement
         nagareAgreement = new NagareAgreement(address(mockVault));
 
         // Setup balances
-        mockUSDC.mint(client, TOTAL_AMOUNT * 10);
-        mockUSDC.mint(contractor, TOTAL_AMOUNT);
-        mockUSDC.mint(provider, TOTAL_AMOUNT);
+        mockUsdc.mint(client, TOTAL_AMOUNT * 10);
+        mockUsdc.mint(contractor, TOTAL_AMOUNT);
+        mockUsdc.mint(provider, TOTAL_AMOUNT);
 
         // Setup approvals
         vm.prank(client);
-        mockUSDC.approve(address(nagareAgreement), type(uint256).max);
+        mockUsdc.approve(address(nagareAgreement), type(uint256).max);
     }
 
-    function createTestAgreement() internal returns (Agreement memory) {
+    function createTestAgreement() internal view returns (Agreement memory) {
         uint256[] memory checkpointSizes = new uint256[](2);
         checkpointSizes[0] = CHECKPOINT_1;
         checkpointSizes[1] = CHECKPOINT_2;
@@ -129,7 +128,7 @@ contract NagareAgreementMorphoTest is Test {
     function testStartAgreement() public {
         Agreement memory agreement = createTestAgreement();
         
-        uint256 initialBalance = mockUSDC.balanceOf(client);
+        uint256 initialBalance = mockUsdc.balanceOf(client);
         
         vm.expectEmit(true, false, false, false);
         emit AgreementStarted(1);
@@ -138,8 +137,8 @@ contract NagareAgreementMorphoTest is Test {
         nagareAgreement.startAgreement(agreement);
 
         // Check balances
-        assertEq(mockUSDC.balanceOf(client), initialBalance - TOTAL_AMOUNT);
-        assertEq(mockUSDC.balanceOf(address(mockVault)), TOTAL_AMOUNT);
+        assertEq(mockUsdc.balanceOf(client), initialBalance - TOTAL_AMOUNT);
+        assertEq(mockUsdc.balanceOf(address(mockVault)), TOTAL_AMOUNT);
         
         // Check agreement storage
         Agreement memory storedAgreement = nagareAgreement.agreements(1);
@@ -183,9 +182,9 @@ contract NagareAgreementMorphoTest is Test {
         // Approve checkpoint
         mockVerifier.setCheckpointApproval(1, true);
 
-        uint256 initialContractorBalance = mockUSDC.balanceOf(contractor);
-        uint256 initialProviderBalance = mockUSDC.balanceOf(provider);
-        uint256 initialOwnerBalance = mockUSDC.balanceOf(owner);
+        uint256 initialContractorBalance = mockUsdc.balanceOf(contractor);
+        uint256 initialProviderBalance = mockUsdc.balanceOf(provider);
+        uint256 initialOwnerBalance = mockUsdc.balanceOf(owner);
 
         vm.expectEmit(true, true, false, false);
         emit CheckpointCompleted(1, 0);
@@ -194,11 +193,11 @@ contract NagareAgreementMorphoTest is Test {
         nagareAgreement.checkpoint(1, 0, abi.encode("proof"));
 
         // Check that contractor received the checkpoint amount
-        assertEq(mockUSDC.balanceOf(contractor), initialContractorBalance + CHECKPOINT_1);
+        assertEq(mockUsdc.balanceOf(contractor), initialContractorBalance + CHECKPOINT_1);
         
         // Check that yield was distributed (owner and provider should receive some)
-        assertGt(mockUSDC.balanceOf(owner), initialOwnerBalance);
-        assertGt(mockUSDC.balanceOf(provider), initialProviderBalance);
+        assertGt(mockUsdc.balanceOf(owner), initialOwnerBalance);
+        assertGt(mockUsdc.balanceOf(provider), initialProviderBalance);
     }
 
     function testCheckpointVerificationFailed() public {
@@ -255,8 +254,8 @@ contract NagareAgreementMorphoTest is Test {
         // Approve termination
         mockVerifier.setTerminationApproval(1, true);
 
-        uint256 initialProviderBalance = mockUSDC.balanceOf(provider);
-        uint256 initialOwnerBalance = mockUSDC.balanceOf(owner);
+        uint256 initialProviderBalance = mockUsdc.balanceOf(provider);
+        uint256 initialOwnerBalance = mockUsdc.balanceOf(owner);
 
         vm.expectEmit(true, false, false, false);
         emit AgreementTerminated(1);
@@ -265,10 +264,10 @@ contract NagareAgreementMorphoTest is Test {
         nagareAgreement.terminate(1, abi.encode("termination proof"));
 
         // Check that provider received remaining funds (at least CHECKPOINT_2)
-        assertGe(mockUSDC.balanceOf(provider), initialProviderBalance + CHECKPOINT_2);
+        assertGe(mockUsdc.balanceOf(provider), initialProviderBalance + CHECKPOINT_2);
         
         // Check that owner received protocol fee
-        assertGt(mockUSDC.balanceOf(owner), initialOwnerBalance);
+        assertGt(mockUsdc.balanceOf(owner), initialOwnerBalance);
     }
 
     function testTerminateVerificationFailed() public {
@@ -311,7 +310,7 @@ contract NagareAgreementMorphoTest is Test {
         nagareAgreement.checkpoint(1, 0, abi.encode("proof"));
     }
 
-    function testVaultGetter() public {
+    function testVaultGetter() public view {
         assertEq(address(nagareAgreement.vault()), address(mockVault));
     }
 

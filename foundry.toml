@@ -3,4 +3,7 @@ src = "src"
 out = "out"
 libs = ["lib"]
 
+[rpc_endpoints]
+base_sepolia = "https://base-sepolia.g.allthatnode.com/archive/evm/a1e7cbfd4b4d4f4d8c3a8f61370dc3cc"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
