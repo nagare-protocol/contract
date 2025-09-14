@@ -163,4 +163,23 @@ contract NagareAgreement is INagareAgreement, Ownable {
     ) external view returns (Agreement memory) {
         return _agreements[agreementId];
     }
+
+    function agreementBalance(
+        uint256 agreementId
+    ) external view returns (uint256) {
+        return _agreementBalances[agreementId];
+    }
+
+    function isCheckpointCompleted(
+        uint256 agreementId,
+        uint256 checkpointId
+    ) external view returns (bool) {
+        return _completedCheckpoints[agreementId][checkpointId];
+    }
+
+    function isAgreementTerminated(
+        uint256 agreementId
+    ) external view returns (bool) {
+        return _terminatedAgreements[agreementId];
+    }
 }
